@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from database import (
     init_db, get_db, Task, Lesson, User,
-    Priority, TaskStatus, Recurrence,
+    Priority, TaskStatus, Recurrence, TaskRecurrence,
     get_tasks, get_lessons_for_date, get_or_create_user
 )
 
@@ -43,6 +43,8 @@ class TaskCreate(BaseModel):
     is_urgent: bool = False
     is_important: bool = False
     scheduled_time: Optional[str] = None  # "HH:MM"
+    recurrence: TaskRecurrence = TaskRecurrence.none
+    recurrence_day: Optional[int] = None  # 0=Пн, 6=Вс
     user_id: Optional[int] = None
 
 class TaskUpdate(BaseModel):
@@ -53,6 +55,8 @@ class TaskUpdate(BaseModel):
     is_urgent: Optional[bool] = None
     is_important: Optional[bool] = None
     scheduled_time: Optional[str] = None
+    recurrence: Optional[TaskRecurrence] = None
+    recurrence_day: Optional[int] = None
 
 class TaskOut(BaseModel):
     id: int
@@ -63,6 +67,8 @@ class TaskOut(BaseModel):
     is_urgent: bool
     is_important: bool
     scheduled_time: Optional[str]
+    recurrence: TaskRecurrence
+    recurrence_day: Optional[int]
     created_at: datetime
     completed_at: Optional[datetime]
     user_id: Optional[int]

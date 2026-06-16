@@ -623,6 +623,28 @@ input:focus, select:focus, textarea:focus {
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label>Повторение</label>
+        <select id="frecurrence" onchange="toggleRecurrenceDay()">
+          <option value="none">Без повторения</option>
+          <option value="daily">Каждый день</option>
+          <option value="weekly">Еженедельно</option>
+        </select>
+      </div>
+      <div class="form-group" id="fRecurrenceDayWrap" style="display:none">
+        <label>День недели</label>
+        <select id="frecurrence_day">
+          <option value="0">Понедельник</option>
+          <option value="1">Вторник</option>
+          <option value="2">Среда</option>
+          <option value="3">Четверг</option>
+          <option value="4">Пятница</option>
+          <option value="5">Суббота</option>
+          <option value="6">Воскресенье</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label><input type="checkbox" id="furgent"> Срочно</label>
       </div>
       <div class="form-group">
@@ -644,7 +666,7 @@ input:focus, select:focus, textarea:focus {
 // CONFIG
 // ════════════════════════════════════════════════════════════════════════════
 
-const API_BASE = "http://localhost:8000";   // адрес FastAPI сервера
+const API_BASE = "https://web-production-05d408.up.railway.app";
 let USE_API = false;  // переключается при ping
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -816,11 +838,12 @@ function openModal(id = null) {
     document.getElementById("ftitle").value = t.title;
     document.getElementById("fpriority").value = t.priority;
     document.getElementById("fstatus").value = t.status;
-    document.getElementById("fdeadline").value = t.deadline
-      ? t.deadline.slice(0, 16) : "";
+    document.getElementById("fdeadline").value = t.deadline ? t.deadline.slice(0, 16) : "";
     document.getElementById("fschedtime").value = t.scheduled_time || "";
     document.getElementById("furgent").checked = t.is_urgent;
     document.getElementById("fimportant").checked = t.is_important;
+    document.getElementById("frecurrence").value = t.recurrence || "none";
+    document.getElementById("frecurrence_day").value = t.recurrence_day ?? 0;
   } else {
     document.getElementById("ftitle").value = "";
     document.getElementById("fpriority").value = "medium";
@@ -829,9 +852,17 @@ function openModal(id = null) {
     document.getElementById("fschedtime").value = "";
     document.getElementById("furgent").checked = false;
     document.getElementById("fimportant").checked = false;
+    document.getElementById("frecurrence").value = "none";
+    document.getElementById("frecurrence_day").value = 0;
   }
+  toggleRecurrenceDay();
   modal.classList.add("open");
   document.getElementById("ftitle").focus();
+}
+
+function toggleRecurrenceDay() {
+  const val = document.getElementById("frecurrence").value;
+  document.getElementById("fRecurrenceDayWrap").style.display = val === "weekly" ? "" : "none";
 }
 
 function closeModal() {
@@ -846,6 +877,7 @@ async function saveTask() {
   const title = document.getElementById("ftitle").value.trim();
   if (!title) { toast("Введите название задачи", "error"); return; }
 
+  const recurrence = document.getElementById("frecurrence").value;
   const data = {
     title,
     priority: document.getElementById("fpriority").value,
@@ -854,6 +886,10 @@ async function saveTask() {
     scheduled_time: document.getElementById("fschedtime").value || null,
     is_urgent: document.getElementById("furgent").checked,
     is_important: document.getElementById("fimportant").checked,
+    recurrence,
+    recurrence_day: recurrence === "weekly"
+      ? parseInt(document.getElementById("frecurrence_day").value)
+      : null,
   };
 
   try {
@@ -926,6 +962,8 @@ function renderTasks() {
           ${t.deadline ? `<span class="badge badge-deadline">📅 ${fmtDate(t.deadline)}</span>` : ""}
           ${t.is_urgent   ? '<span class="badge" style="background:#fef2f2;color:#dc2626">⚡ Срочно</span>' : ""}
           ${t.is_important? '<span class="badge" style="background:#eff6ff;color:#2563eb">⭐ Важно</span>' : ""}
+          ${t.recurrence === "daily"  ? '<span class="badge" style="background:#f0fdf4;color:#16a34a">🔁 Каждый день</span>' : ""}
+          ${t.recurrence === "weekly" ? `<span class="badge" style="background:#f5f3ff;color:#7c3aed">🔁 ${["Пн","Вт","Ср","Чт","Пт","Сб","Вс"][t.recurrence_day]}</span>` : ""}
         </div>
       </div>
       <div class="task-actions">
@@ -1099,14 +1137,16 @@ function renderCalendar() {
   const container = document.getElementById("dayPlan");
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
-  // Задачи запланированные на этот день и имеющие scheduled_time
+  const selDateObj = new Date(selectedDate + "T00:00:00");
+  const selDayOfWeek = selDateObj.getDay() === 0 ? 6 : selDateObj.getDay() - 1; // 0=Пн
+
   const dayTasks = state.tasks.filter(t => {
     if (!t.scheduled_time) return false;
-    if (t.deadline) {
-      const d = t.deadline.slice(0, 10);
-      return d === selectedDate;
-    }
-    return true;
+    if (t.recurrence === "daily") return true;
+    if (t.recurrence === "weekly") return t.recurrence_day === selDayOfWeek;
+    // разовая — по дедлайну
+    if (t.deadline) return t.deadline.slice(0, 10) === selectedDate;
+    return false;
   });
 
   container.innerHTML = hours.map(h => {

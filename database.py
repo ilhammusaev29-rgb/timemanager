@@ -39,6 +39,11 @@ class Recurrence(str, enum.Enum):
     once = "once"
     weekly = "weekly"
 
+class TaskRecurrence(str, enum.Enum):
+    none   = "none"
+    daily  = "daily"
+    weekly = "weekly"
+
 
 # ── Models ─────────────────────────────────────────────────────────────────
 
@@ -64,7 +69,9 @@ class Task(Base):
     status      = Column(SAEnum(TaskStatus), default=TaskStatus.planned)
     is_urgent   = Column(Boolean, default=False)   # для матрицы Эйзенхауэра
     is_important = Column(Boolean, default=False)
-    scheduled_time = Column(String, nullable=True)  # "HH:MM" для плана дня
+    scheduled_time   = Column(String, nullable=True)   # "HH:MM" для плана дня
+    recurrence       = Column(SAEnum(TaskRecurrence), default=TaskRecurrence.none)
+    recurrence_day   = Column(Integer, nullable=True)  # 0=Пн, 6=Вс (для weekly)
     created_at  = Column(DateTime, default=datetime.utcnow)
     updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
