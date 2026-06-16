@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeManager</title>
+<style>
+/* ── CSS переменные (темы) ─────────────────────────────────────────── */
+:root {
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface2: #f0f0f0;
+  --border: #e0e0e0;
+  --text: #1a1a1a;
+  --text2: #666666;
+  --accent: #4f6ef7;
+  --accent-hover: #3a57d9;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warn: #f59e0b;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --transition: .2s ease;
+}
+[data-theme="dark"] {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #252525;
+  --border: #333333;
+  --text: #f0f0f0;
+  --text2: #999999;
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* ── Reset & base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background var(--transition), color var(--transition);
+}
+button { cursor: pointer; border: none; font: inherit; }
+input, select, textarea { font: inherit; }
+
+/* ── Layout ────────────────────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+header h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); flex: 1; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+nav {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  overflow-x: auto;
+}
+nav button {
+  padding: 12px 16px;
+  background: none;
+  color: var(--text2);
+  font-size: .9rem;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition);
+}
+nav button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+nav button:hover { color: var(--text); }
+
+main { flex: 1; padding: 20px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+/* ── Cards / surfaces ──────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: .875rem;
+  font-weight: 500;
+  transition: transform var(--transition), opacity var(--transition), background var(--transition);
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: .8rem; border-radius: 6px; }
+.btn-icon {
+  background: none;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  color: var(--text2);
+  font-size: 1rem;
+}
+.btn-icon:hover { background: var(--surface2); color: var(--text); }
+
+/* ── Forms ─────────────────────────────────────────────────────────── */
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+label { font-size: .8rem; color: var(--text2); font-weight: 500; }
+input, select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  transition: border-color var(--transition);
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ── Task items ────────────────────────────────────────────────────── */
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+  animation: slideIn .2s ease;
+}
+.task-item:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.task-item.done { opacity: .55; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateX(20px); }
+}
+.task-item.removing { animation: fadeOut .2s ease forwards; }
+
+.task-checkbox {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.task-checkbox.checked { background: var(--success); border-color: var(--success); }
+
+.task-body { flex: 1; }
+.task-title { font-size: .95rem; font-weight: 500; }
+.task-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.badge {
+  font-size: .72rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.badge-high   { background: #fef2f2; color: #ef4444; }
+.badge-medium { background: #fffbeb; color: #d97706; }
+.badge-low    { background: #f0fdf4; color: #16a34a; }
+[data-theme="dark"] .badge-high   { background: #3f1010; color: #f87171; }
+[data-theme="dark"] .badge-medium { background: #3d2d00; color: #fbbf24; }
+[data-theme="dark"] .badge-low    { background: #052e16; color: #4ade80; }
+.badge-status { background: var(--surface2); color: var(--text2); }
+.badge-deadline { background: var(--surface2); color: var(--text2); }
+.task-actions { display: flex; gap: 4px; }
+
+/* ── Filters bar ───────────────────────────────────────────────────── */
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.filters select, .filters input { max-width: 160px; }
+
+/* ── Eisenhower matrix ─────────────────────────────────────────────── */
+.matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  height: calc(100vh - 200px);
+  min-height: 400px;
+}
+.quadrant {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  overflow-y: auto;
+}
+.quadrant h3 {
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.q1 h3 { background: #fef2f2; color: #dc2626; }
+.q2 h3 { background: #eff6ff; color: #2563eb; }
+.q3 h3 { background: #fffbeb; color: #d97706; }
+.q4 h3 { background: #f0fdf4; color: #16a34a; }
+[data-theme="dark"] .q1 h3 { background: #3f0f0f; color: #f87171; }
+[data-theme="dark"] .q2 h3 { background: #0f1f3f; color: #60a5fa; }
+[data-theme="dark"] .q3 h3 { background: #3f2a00; color: #fbbf24; }
+[data-theme="dark"] .q4 h3 { background: #052e16; color: #4ade80; }
+.q-task {
+  font-size: .82rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: var(--surface2);
+  cursor: default;
+  transition: background var(--transition);
+}
+.q-task:hover { background: var(--border); }
+
+/* ── Pomodoro ───────────────────────────────────────────────────────── */
+.pomodoro-wrap { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.timer-ring-wrap { position: relative; width: 220px; height: 220px; }
+.timer-ring-wrap svg { transform: rotate(-90deg); }
+.timer-ring-bg { stroke: var(--border); }
+.timer-ring-fg { stroke: var(--accent); transition: stroke-dashoffset .9s linear; }
+.timer-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.timer-time { font-size: 2.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer-label { font-size: .8rem; color: var(--text2); margin-top: 4px; }
+.pomodoro-controls { display: flex; gap: 10px; }
+.pomodoro-settings { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.pomodoro-settings .form-group { min-width: 100px; max-width: 140px; }
+.pomo-count { font-size: .85rem; color: var(--text2); }
+
+/* ── Calendar / Day plan ────────────────────────────────────────────── */
+.day-plan { display: flex; flex-direction: column; gap: 0; }
+.time-slot {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+.time-slot:last-child { border-bottom: none; }
+.slot-hour { width: 44px; font-size: .78rem; color: var(--text2); flex-shrink: 0; padding-top: 4px; }
+.slot-tasks { flex: 1; display: flex; flex-direction: column; gap: 4px; min-height: 36px; }
+.slot-task-chip {
+  padding: 4px 10px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-size: .8rem;
+  cursor: grab;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  transition: opacity var(--transition);
+}
+.slot-task-chip:active { cursor: grabbing; opacity: .7; }
+.slot-task-chip .rm { background: none; color: rgba(255,255,255,.7); font-size: .8rem; }
+.slot-task-chip .rm:hover { color: #fff; }
+.slot-drop-target { border: 2px dashed var(--accent); border-radius: 6px; }
+
+/* ── Stats ──────────────────────────────────────────────────────────── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-value { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: .85rem; color: var(--text2); margin-top: 4px; }
+
+.progress-bar-wrap { margin-top: 20px; }
+.progress-bar-wrap label { font-size: .85rem; color: var(--text2); display: flex; justify-content: space-between; margin-bottom: 6px; }
+.progress-bar { height: 10px; background: var(--surface2); border-radius: 20px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--accent); border-radius: 20px; transition: width .6s ease; }
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--transition);
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%; max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  transform: translateY(20px);
+  transition: transform var(--transition);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h2 { font-size: 1.1rem; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+/* ── Toast ──────────────────────────────────────────────────────────── */
+#toast-container {
+  position: fixed; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 300;
+}
+.toast {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: .875rem;
+  color: #fff;
+  animation: toastIn .2s ease;
+  max-width: 280px;
+}
+.toast-success { background: var(--success); }
+.toast-error   { background: var(--danger); }
+.toast-info    { background: var(--accent); }
+@keyframes toastIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+/* ── Theme toggle ───────────────────────────────────────────────────── */
+.theme-toggle {
+  width: 40px; height: 22px;
+  background: var(--border);
+  border-radius: 20px;
+  position: relative;
+  transition: background var(--transition);
+  cursor: pointer;
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: transform var(--transition), background var(--transition);
+}
+[data-theme="dark"] .theme-toggle { background: var(--accent); }
+[data-theme="dark"] .theme-toggle::after { transform: translateX(18px); }
+
+/* ── Section titles ─────────────────────────────────────────────────── */
+.section-title {
+  font-size: 1rem; font-weight: 700;
+  margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .matrix { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+  .form-row { flex-direction: column; }
+  main { padding: 12px; }
+  header { padding: 0 12px; }
+  header h1 { font-size: 1rem; }
+}
+
+/* ── Tabs content ───────────────────────────────────────────────────── */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── API status indicator ───────────────────────────────────────────── */
+.api-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--warn);
+  display: inline-block;
+}
+.api-dot.online  { background: var(--success); }
+.api-dot.offline { background: var(--danger); }
+
+/* ── Drag handle ────────────────────────────────────────────────────── */
+[draggable="true"] { user-select: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<header>
+  <h1>⏱ TimeManager</h1>
+  <div class="header-actions">
+    <span title="Статус API"><span class="api-dot" id="apiDot"></span></span>
+    <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ JSON</button>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Тема"></div>
+  </div>
+</header>
+
+<!-- Nav -->
+<nav>
+  <button class="active" onclick="switchTab('tasks',this)">Задачи</button>
+  <button onclick="switchTab('matrix',this)">Матрица</button>
+  <button onclick="switchTab('pomodoro',this)">Pomodoro</button>
+  <button onclick="switchTab('calendar',this)">День</button>
+  <button onclick="switchTab('stats',this)">Статистика</button>
+</nav>
+
+<main>
+
+<!-- ── ЗАДАЧИ ───────────────────────────────────────────────────────── -->
+<div id="tab-tasks" class="tab-content active">
+  <div class="section-title">
+    Задачи
+    <button class="btn btn-primary btn-sm" onclick="openModal()">+ Добавить</button>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="filters">
+    <select id="filterStatus" onchange="renderTasks()">
+      <option value="">Все статусы</option>
+      <option value="planned">Запланировано</option>
+      <option value="in_progress">В работе</option>
+      <option value="done">Выполнено</option>
+    </select>
+    <select id="filterPriority" onchange="renderTasks()">
+      <option value="">Все приоритеты</option>
+      <option value="high">Высокий</option>
+      <option value="medium">Средний</option>
+      <option value="low">Низкий</option>
+    </select>
+    <select id="sortBy" onchange="renderTasks()">
+      <option value="deadline">По дедлайну</option>
+      <option value="priority">По приоритету</option>
+      <option value="created">По дате создания</option>
+    </select>
+    <input id="searchQ" placeholder="Поиск…" oninput="renderTasks()" style="max-width:180px">
+  </div>
+
+  <div class="task-list" id="taskList"></div>
+</div>
+
+<!-- ── МАТРИЦА ЭЙЗЕНХАУЭРА ──────────────────────────────────────────── -->
+<div id="tab-matrix" class="tab-content">
+  <div class="section-title">Матрица Эйзенхауэра</div>
+  <div class="matrix">
+    <div class="quadrant q1" id="q-1-1">
+      <h3>🔥 Срочно + Важно</h3>
+      <div class="q-tasks"></div>
+    </div>
+    <div class="quadrant q2" id="q-0-1">
+      <h3>📌 Не срочно + Важно</h3>
+      <div class="q-tasks"></div>
+    </div>
+    <div class="quadrant q3" id="q-1-0">
+      <h3>⚡ Срочно + Не важно</h3>
+      <div class="q-tasks"></div>
+    </div>
+    <div class="quadrant q4" id="q-0-0">
+      <h3>🗑 Не срочно + Не важно</h3>
+      <div class="q-tasks"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── POMODORO ──────────────────────────────────────────────────────── -->
+<div id="tab-pomodoro" class="tab-content">
+  <div class="section-title">Pomodoro</div>
+  <div class="card pomodoro-wrap">
+    <!-- Кольцо таймера -->
+    <div class="timer-ring-wrap">
+      <svg width="220" height="220">
+        <circle class="timer-ring-bg" cx="110" cy="110" r="96" fill="none" stroke-width="10"/>
+        <circle class="timer-ring-fg" id="timerRing" cx="110" cy="110" r="96" fill="none"
+          stroke-width="10" stroke-linecap="round"
+          stroke-dasharray="603" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-display">
+        <div class="timer-time" id="timerDisplay">25:00</div>
+        <div class="timer-label" id="timerLabel">Работа</div>
+      </div>
+    </div>
+
+    <div class="pomodoro-controls">
+      <button class="btn btn-primary" id="btnPomoStart" onclick="pomodoroToggle()">▶ Старт</button>
+      <button class="btn btn-ghost" onclick="pomodoroReset()">↺ Сброс</button>
+    </div>
+
+    <div class="pomo-count" id="pomoCount">Помидоров: 0</div>
+
+    <div class="pomodoro-settings">
+      <div class="form-group">
+        <label>Работа (мин)</label>
+        <input type="number" id="pomoWork" value="25" min="1" max="120" onchange="pomodoroReset()">
+      </div>
+      <div class="form-group">
+        <label>Короткий отдых</label>
+        <input type="number" id="pomoShort" value="5" min="1" max="60" onchange="pomodoroReset()">
+      </div>
+      <div class="form-group">
+        <label>Длинный отдых</label>
+        <input type="number" id="pomoLong" value="15" min="1" max="120" onchange="pomodoroReset()">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ПЛАН ДНЯ ──────────────────────────────────────────────────────── -->
+<div id="tab-calendar" class="tab-content">
+  <div class="section-title">
+    <span>📅 План на день</span>
+    <input type="date" id="calDate" onchange="renderCalendar()" style="max-width:160px">
+  </div>
+  <div class="card">
+    <div class="day-plan" id="dayPlan"></div>
+  </div>
+</div>
+
+<!-- ── СТАТИСТИКА ────────────────────────────────────────────────────── -->
+<div id="tab-stats" class="tab-content">
+  <div class="section-title">Статистика</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="statToday">—</div>
+      <div class="stat-label">Выполнено сегодня</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statWeek">—</div>
+      <div class="stat-label">За эту неделю</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-label">Всего задач</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statPct">—</div>
+      <div class="stat-label">% завершения</div>
+    </div>
+  </div>
+  <div class="progress-bar-wrap card" style="margin-top:16px">
+    <label><span>Прогресс</span><span id="statPctLabel">0%</span></label>
+    <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+</div>
+
+</main>
+</div><!-- .app -->
+
+<!-- ── МОДАЛЬНОЕ ОКНО (форма задачи) ──────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Новая задача</h2>
+      <button class="btn-icon" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Название *</label>
+        <input id="ftitle" placeholder="Что нужно сделать?" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Приоритет</label>
+        <select id="fpriority">
+          <option value="high">Высокий</option>
+          <option value="medium" selected>Средний</option>
+          <option value="low">Низкий</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Статус</label>
+        <select id="fstatus">
+          <option value="planned" selected>Запланировано</option>
+          <option value="in_progress">В работе</option>
+          <option value="done">Выполнено</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Дедлайн</label>
+        <input type="datetime-local" id="fdeadline">
+      </div>
+      <div class="form-group">
+        <label>Время в плане</label>
+        <input type="time" id="fschedtime" placeholder="HH:MM">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label><input type="checkbox" id="furgent"> Срочно</label>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="fimportant"> Важно</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveTask()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════════════════════
+
+const API_BASE = "http://localhost:8000";   // адрес FastAPI сервера
+let USE_API = false;  // переключается при ping
+
+// ════════════════════════════════════════════════════════════════════════════
+// STATE (локальный кеш данных)
+// ════════════════════════════════════════════════════════════════════════════
+
+const state = {
+  tasks: [],       // массив объектов задач
+  editId: null,    // id редактируемой задачи
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// API / STORAGE LAYER
+// Абстракция: если бэкенд доступен — работаем с API, иначе — localStorage
+// ════════════════════════════════════════════════════════════════════════════
+
+const LS_KEY = "tm_tasks";
+
+function lsSave() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state.tasks));
+}
+function lsLoad() {
+  try { state.tasks = JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+  catch { state.tasks = []; }
+}
+
+async function apiPing() {
+  try {
+    const r = await fetch(`${API_BASE}/tasks`, { signal: AbortSignal.timeout(2000) });
+    USE_API = r.ok;
+  } catch { USE_API = false; }
+  document.getElementById("apiDot").className = "api-dot " + (USE_API ? "online" : "offline");
+}
+
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(API_BASE + path, {
+    headers: { "Content-Type": "application/json" },
+    ...opts,
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.detail || r.statusText);
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+// Загрузка всех задач
+async function loadTasks() {
+  if (USE_API) {
+    state.tasks = await apiFetch("/tasks");
+  } else {
+    lsLoad();
+  }
+}
+
+// Создание задачи
+async function createTask(data) {
+  if (USE_API) {
+    const task = await apiFetch("/tasks", { method: "POST", body: JSON.stringify(data) });
+    state.tasks.push(task);
+    return task;
+  }
+  const task = { ...data, id: Date.now(), created_at: new Date().toISOString(), completed_at: null };
+  state.tasks.push(task);
+  lsSave();
+  return task;
+}
+
+// Обновление задачи
+async function updateTask(id, data) {
+  if (USE_API) {
+    const updated = await apiFetch(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    const idx = state.tasks.findIndex(t => t.id === id);
+    if (idx !== -1) state.tasks[idx] = updated;
+    return updated;
+  }
+  const idx = state.tasks.findIndex(t => t.id === id);
+  if (idx !== -1) {
+    state.tasks[idx] = { ...state.tasks[idx], ...data };
+    if (data.status === "done" && !state.tasks[idx].completed_at) {
+      state.tasks[idx].completed_at = new Date().toISOString();
+    }
+  }
+  lsSave();
+  return state.tasks[idx];
+}
+
+// Удаление задачи
+async function deleteTask(id) {
+  if (USE_API) {
+    await apiFetch(`/tasks/${id}`, { method: "DELETE" });
+  }
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  lsSave();
+}
+
+// Статистика
+async function loadStats() {
+  if (USE_API) {
+    return apiFetch("/stats");
+  }
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(todayStart.getDate() - todayStart.getDay());
+  const done = state.tasks.filter(t => t.status === "done");
+  const doneToday = done.filter(t => t.completed_at && new Date(t.completed_at) >= todayStart).length;
+  const doneWeek  = done.filter(t => t.completed_at && new Date(t.completed_at) >= weekStart).length;
+  const total = state.tasks.length;
+  return {
+    done_today: doneToday,
+    done_week: doneWeek,
+    total,
+    completion_pct: total ? +(done.length / total * 100).toFixed(1) : 0,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// THEME
+// ════════════════════════════════════════════════════════════════════════════
+
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute("data-theme") !== "dark";
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "");
+  localStorage.setItem("tm_theme", dark ? "dark" : "");
+}
+(function applyTheme() {
+  const t = localStorage.getItem("tm_theme");
+  if (t === "dark") document.documentElement.setAttribute("data-theme", "dark");
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════════════════
+
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(el => el.classList.remove("active"));
+  document.getElementById(`tab-${name}`).classList.add("active");
+  btn.classList.add("active");
+  if (name === "matrix")   renderMatrix();
+  if (name === "calendar") renderCalendar();
+  if (name === "stats")    renderStats();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════════════════════
+
+function toast(msg, type = "info") {
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById("toast-container").appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODAL
+// ════════════════════════════════════════════════════════════════════════════
+
+function openModal(id = null) {
+  state.editId = id;
+  const modal = document.getElementById("modalOverlay");
+  document.getElementById("modalTitle").textContent = id ? "Редактировать задачу" : "Новая задача";
+
+  if (id) {
+    const t = state.tasks.find(t => t.id === id);
+    document.getElementById("ftitle").value = t.title;
+    document.getElementById("fpriority").value = t.priority;
+    document.getElementById("fstatus").value = t.status;
+    document.getElementById("fdeadline").value = t.deadline
+      ? t.deadline.slice(0, 16) : "";
+    document.getElementById("fschedtime").value = t.scheduled_time || "";
+    document.getElementById("furgent").checked = t.is_urgent;
+    document.getElementById("fimportant").checked = t.is_important;
+  } else {
+    document.getElementById("ftitle").value = "";
+    document.getElementById("fpriority").value = "medium";
+    document.getElementById("fstatus").value = "planned";
+    document.getElementById("fdeadline").value = "";
+    document.getElementById("fschedtime").value = "";
+    document.getElementById("furgent").checked = false;
+    document.getElementById("fimportant").checked = false;
+  }
+  modal.classList.add("open");
+  document.getElementById("ftitle").focus();
+}
+
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("open");
+}
+function closeModalOnBg(e) {
+  if (e.target === document.getElementById("modalOverlay")) closeModal();
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+async function saveTask() {
+  const title = document.getElementById("ftitle").value.trim();
+  if (!title) { toast("Введите название задачи", "error"); return; }
+
+  const data = {
+    title,
+    priority: document.getElementById("fpriority").value,
+    status: document.getElementById("fstatus").value,
+    deadline: document.getElementById("fdeadline").value || null,
+    scheduled_time: document.getElementById("fschedtime").value || null,
+    is_urgent: document.getElementById("furgent").checked,
+    is_important: document.getElementById("fimportant").checked,
+  };
+
+  try {
+    if (state.editId) {
+      await updateTask(state.editId, data);
+      toast("Задача обновлена", "success");
+    } else {
+      await createTask(data);
+      toast("Задача добавлена", "success");
+    }
+    closeModal();
+    renderTasks();
+  } catch (err) {
+    toast("Ошибка: " + err.message, "error");
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TASKS RENDER
+// ════════════════════════════════════════════════════════════════════════════
+
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+const PRIORITY_LABEL = { high: "Высокий", medium: "Средний", low: "Низкий" };
+const STATUS_LABEL   = { planned: "Запланировано", in_progress: "В работе", done: "Выполнено" };
+
+function getFilteredTasks() {
+  const status   = document.getElementById("filterStatus").value;
+  const priority = document.getElementById("filterPriority").value;
+  const search   = document.getElementById("searchQ").value.toLowerCase();
+  const sort     = document.getElementById("sortBy").value;
+
+  let tasks = state.tasks.filter(t => {
+    if (status   && t.status   !== status)   return false;
+    if (priority && t.priority !== priority) return false;
+    if (search   && !t.title.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  tasks.sort((a, b) => {
+    if (sort === "priority") return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    if (sort === "deadline") {
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    }
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  return tasks;
+}
+
+function renderTasks() {
+  const list = document.getElementById("taskList");
+  const tasks = getFilteredTasks();
+
+  if (!tasks.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2)">Задач нет</div>';
+    return;
+  }
+
+  list.innerHTML = tasks.map(t => `
+    <div class="task-item ${t.status === 'done' ? 'done' : ''}" data-id="${t.id}">
+      <div class="task-checkbox ${t.status === 'done' ? 'checked' : ''}"
+           onclick="toggleDone(${t.id})" title="Отметить выполненной"></div>
+      <div class="task-body">
+        <div class="task-title">${escHtml(t.title)}</div>
+        <div class="task-meta">
+          <span class="badge badge-${t.priority}">${PRIORITY_LABEL[t.priority]}</span>
+          <span class="badge badge-status">${STATUS_LABEL[t.status]}</span>
+          ${t.deadline ? `<span class="badge badge-deadline">📅 ${fmtDate(t.deadline)}</span>` : ""}
+          ${t.is_urgent   ? '<span class="badge" style="background:#fef2f2;color:#dc2626">⚡ Срочно</span>' : ""}
+          ${t.is_important? '<span class="badge" style="background:#eff6ff;color:#2563eb">⭐ Важно</span>' : ""}
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="btn-icon btn-sm" onclick="openModal(${t.id})" title="Редактировать">✏️</button>
+        <button class="btn-icon btn-sm" onclick="confirmDelete(${t.id})" title="Удалить">🗑</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function toggleDone(id) {
+  const t = state.tasks.find(t => t.id === id);
+  if (!t) return;
+  const newStatus = t.status === "done" ? "planned" : "done";
+  try {
+    await updateTask(id, { status: newStatus });
+    renderTasks();
+  } catch (err) {
+    toast("Ошибка: " + err.message, "error");
+  }
+}
+
+function confirmDelete(id) {
+  const el = document.querySelector(`.task-item[data-id="${id}"]`);
+  el.classList.add("removing");
+  el.addEventListener("animationend", async () => {
+    try {
+      await deleteTask(id);
+      renderTasks();
+      toast("Задача удалена", "info");
+    } catch (err) {
+      el.classList.remove("removing");
+      toast("Ошибка: " + err.message, "error");
+    }
+  }, { once: true });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EISENHOWER MATRIX
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderMatrix() {
+  const quads = { "1-1": [], "0-1": [], "1-0": [], "0-0": [] };
+  state.tasks.forEach(t => {
+    const key = `${t.is_urgent ? 1 : 0}-${t.is_important ? 1 : 0}`;
+    quads[key].push(t);
+  });
+  Object.entries(quads).forEach(([key, tasks]) => {
+    const el = document.querySelector(`#q-${key} .q-tasks`);
+    if (!el) return;
+    el.innerHTML = tasks.map(t =>
+      `<div class="q-task" title="${escHtml(t.title)}">${escHtml(t.title)}</div>`
+    ).join("") || '<div style="color:var(--text2);font-size:.8rem">Пусто</div>';
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// POMODORO
+// ════════════════════════════════════════════════════════════════════════════
+
+const pomo = {
+  interval: null,
+  secondsLeft: 0,
+  totalSeconds: 0,
+  running: false,
+  phase: "work",  // "work" | "short" | "long"
+  count: 0,       // количество завершённых помидоров
+};
+
+const CIRCUMFERENCE = 2 * Math.PI * 96;  // r=96
+
+function pomodoroSetup() {
+  const work = parseInt(document.getElementById("pomoWork").value) || 25;
+  pomo.totalSeconds = work * 60;
+  pomo.secondsLeft  = pomo.totalSeconds;
+  pomo.phase = "work";
+  pomodoroRenderUI();
+}
+
+function pomodoroRenderUI() {
+  const m = String(Math.floor(pomo.secondsLeft / 60)).padStart(2, "0");
+  const s = String(pomo.secondsLeft % 60).padStart(2, "0");
+  document.getElementById("timerDisplay").textContent = `${m}:${s}`;
+  document.getElementById("timerLabel").textContent =
+    pomo.phase === "work" ? "Работа" : pomo.phase === "short" ? "Короткий отдых" : "Длинный отдых";
+  document.getElementById("btnPomoStart").textContent = pomo.running ? "⏸ Пауза" : "▶ Старт";
+  document.getElementById("pomoCount").textContent = `Помидоров: ${pomo.count}`;
+
+  // Кольцо прогресса
+  const pct = pomo.secondsLeft / pomo.totalSeconds;
+  const offset = CIRCUMFERENCE * (1 - pct);
+  document.getElementById("timerRing").setAttribute("stroke-dasharray", CIRCUMFERENCE);
+  document.getElementById("timerRing").setAttribute("stroke-dashoffset", offset);
+}
+
+function pomodoroToggle() {
+  if (pomo.running) {
+    clearInterval(pomo.interval);
+    pomo.running = false;
+  } else {
+    if (pomo.secondsLeft <= 0) pomodoroSetup();
+    pomo.running = true;
+    pomo.interval = setInterval(() => {
+      pomo.secondsLeft--;
+      if (pomo.secondsLeft <= 0) {
+        pomodoroNextPhase();
+      }
+      pomodoroRenderUI();
+    }, 1000);
+  }
+  pomodoroRenderUI();
+}
+
+function pomodoroNextPhase() {
+  clearInterval(pomo.interval);
+  pomo.running = false;
+  pomodoroBeep();
+
+  if (pomo.phase === "work") {
+    pomo.count++;
+    pomo.phase = pomo.count % 4 === 0 ? "long" : "short";
+    const min = pomo.phase === "long"
+      ? parseInt(document.getElementById("pomoLong").value) || 15
+      : parseInt(document.getElementById("pomoShort").value) || 5;
+    pomo.totalSeconds = min * 60;
+    toast(pomo.phase === "long" ? "Длинный отдых!" : "Короткий отдых!", "info");
+  } else {
+    pomo.phase = "work";
+    const work = parseInt(document.getElementById("pomoWork").value) || 25;
+    pomo.totalSeconds = work * 60;
+    toast("Пора работать!", "info");
+  }
+  pomo.secondsLeft = pomo.totalSeconds;
+  pomodoroRenderUI();
+}
+
+function pomodoroReset() {
+  clearInterval(pomo.interval);
+  pomo.running = false;
+  pomodoroSetup();
+}
+
+// Звуковой сигнал через Web Audio API
+function pomodoroBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    osc.start(); osc.stop(ctx.currentTime + 0.8);
+  } catch (_) {}
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CALENDAR / DAY PLAN
+// ════════════════════════════════════════════════════════════════════════════
+
+let dragTaskId = null;
+
+function renderCalendar() {
+  const dateInput = document.getElementById("calDate");
+  if (!dateInput.value) {
+    dateInput.value = new Date().toISOString().slice(0, 10);
+  }
+  const selectedDate = dateInput.value;
+
+  const container = document.getElementById("dayPlan");
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  // Задачи запланированные на этот день и имеющие scheduled_time
+  const dayTasks = state.tasks.filter(t => {
+    if (!t.scheduled_time) return false;
+    if (t.deadline) {
+      const d = t.deadline.slice(0, 10);
+      return d === selectedDate;
+    }
+    return true;
+  });
+
+  container.innerHTML = hours.map(h => {
+    const hStr = String(h).padStart(2, "0") + ":00";
+    const slotTasks = dayTasks.filter(t => {
+      const th = t.scheduled_time.slice(0, 2);
+      return parseInt(th) === h;
+    });
+    return `
+      <div class="time-slot" data-hour="${h}"
+           ondragover="onSlotDragOver(event,${h})"
+           ondrop="onSlotDrop(event,${h})"
+           ondragleave="onSlotDragLeave(event)">
+        <div class="slot-hour">${hStr}</div>
+        <div class="slot-tasks" id="slot-${h}">
+          ${slotTasks.map(t => `
+            <div class="slot-task-chip" draggable="true"
+                 data-task-id="${t.id}"
+                 ondragstart="onTaskDragStart(event,${t.id})">
+              <span>${escHtml(t.title)}</span>
+              <button class="rm btn-icon" onclick="removeFromSlot(${t.id})">✕</button>
+            </div>
+          `).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function onTaskDragStart(e, id) {
+  dragTaskId = id;
+  e.dataTransfer.effectAllowed = "move";
+}
+
+function onSlotDragOver(e, hour) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  document.querySelectorAll(".time-slot").forEach(s => s.classList.remove("slot-drop-target"));
+  e.currentTarget.classList.add("slot-drop-target");
+}
+
+function onSlotDragLeave(e) {
+  e.currentTarget.classList.remove("slot-drop-target");
+}
+
+async function onSlotDrop(e, hour) {
+  e.preventDefault();
+  e.currentTarget.classList.remove("slot-drop-target");
+  if (dragTaskId === null) return;
+  const newTime = String(hour).padStart(2, "0") + ":00";
+  try {
+    await updateTask(dragTaskId, { scheduled_time: newTime });
+    renderCalendar();
+  } catch (err) {
+    toast("Ошибка: " + err.message, "error");
+  }
+  dragTaskId = null;
+}
+
+async function removeFromSlot(id) {
+  try {
+    await updateTask(id, { scheduled_time: null });
+    renderCalendar();
+  } catch (err) {
+    toast("Ошибка: " + err.message, "error");
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// STATS
+// ════════════════════════════════════════════════════════════════════════════
+
+async function renderStats() {
+  try {
+    const s = await loadStats();
+    document.getElementById("statToday").textContent = s.done_today;
+    document.getElementById("statWeek").textContent  = s.done_week;
+    document.getElementById("statTotal").textContent  = s.total;
+    document.getElementById("statPct").textContent    = s.completion_pct + "%";
+    document.getElementById("statPctLabel").textContent = s.completion_pct + "%";
+    document.getElementById("progressFill").style.width = s.completion_pct + "%";
+  } catch (err) {
+    toast("Ошибка загрузки статистики", "error");
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════════════════════════════════
+
+async function exportData() {
+  try {
+    let data;
+    if (USE_API) {
+      data = await apiFetch("/export");
+    } else {
+      data = { tasks: state.tasks };
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = `timemanager_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Данные экспортированы", "success");
+  } catch (err) {
+    toast("Ошибка экспорта: " + err.message, "error");
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════════════════════════
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════════════
+
+async function init() {
+  await apiPing();
+  await loadTasks();
+  pomodoroSetup();
+  renderTasks();
+
+  // Периодически проверяем доступность API
+  setInterval(async () => {
+    await apiPing();
+    await loadTasks();
+    renderTasks();
+  }, 30000);
+}
+
+init();
+</script>
+</body>
+</html>
